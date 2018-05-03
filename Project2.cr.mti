@@ -1,0 +1,25 @@
+/fs/student/sunginkim/ece154B/Pro2/cache_wb/ops.v {1 {vlog -work work -vopt -stats=none /fs/student/sunginkim/ece154B/Pro2/cache_wb/ops.v
+Model Technology ModelSim SE-64 vlog 10.5c Compiler 2016.07 Jul 20 2016
+-- Compiling module equals
+-- Compiling module tri_buf
+-- Compiling module mux4
+
+Top level modules:
+	equals
+	tri_buf
+	mux4
+
+} {} {}} /fs/student/sunginkim/ece154B/Pro2/cache_wb/cache_memory.v {1 {vlog -work work -vopt -stats=none /fs/student/sunginkim/ece154B/Pro2/cache_wb/cache_memory.v
+Model Technology ModelSim SE-64 vlog 10.5c Compiler 2016.07 Jul 20 2016
+-- Compiling module data_block0_RAM
+-- Compiling module data_block1_RAM
+-- Compiling module tag1_RAM
+-- Compiling module tag2_RAM
+
+Top level modules:
+	data_block0_RAM
+	data_block1_RAM
+	tag1_RAM
+	tag2_RAM
+
+} {} {}}
