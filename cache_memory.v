@@ -1,108 +1,136 @@
-module data_block0_RAM #(parameter BLOCK_SIZE_WORDS = 4, NUMBER_OF_SET = 1000)(
+module data_block0_RAM #(parameter INDEX_BIT = 10, BLOCK_SIZE_WORDS = 4, NUMBER_OF_SETS = 1000)(
 	input					clk,
-	input	[31:0] 				addr,
+	input	[INDEX_BIT-1:0] 		addr,
 	input	[(32*BLOCK_SIZE_WORDS)-1:0] 	data_in,	//main memory has 32 bit addr each slot has 128 bits
 	input					write_enable,
 	output	[(32*BLOCK_SIZE_WORDS)-1:0]		data_out);
 
-reg [(32*BLOCK_SIZE_WORDS)-1:0] DB0_mem [0:NUMBER_OF_SET-1]; 	//4 words, 8 bypes in a word so row x col = 32*BLOCK_SIZE_WORDS x NUMBER_OF_SET-1
+localparam LINES = 1 << INDEX_BIT;
 
+reg [(32*BLOCK_SIZE_WORDS)-1:0] DB0_mem [0:LINES-1]; 	//4 words, 8 bypes in a word so row x col = 32*BLOCK_SIZE_WORDS x LINES
+
+
+integer i;
 initial begin
-	$readmemb("data_block0.dat", DB0_mem);
-end
-
-reg [31:0] read_addr;
-
-always@(posedge clk) begin
-	if(write_enable) begin
-		DB0_mem[addr] <= data_in;
-		read_addr <= addr;
+for(i = 0; i < 1000; i = i + 1) begin
+	DB0_mem[i][127:96] 	= i*4;
+	DB0_mem[i][95:64] 	= i*4 + 1;
+	DB0_mem[i][63:32] 	= i*4 + 2;
+	DB0_mem[i][31:0] 	= i*4 + 3;
 	end
 end
 
-assign dout = DB0_mem[read_addr];	//keep output stable during read operation
+reg [INDEX_BIT-1:0] read_addr;
+
+always@(posedge clk) begin
+	if(write_enable) begin
+		DB0_mem[addr%NUMBER_OF_SETS] <= data_in;
+		read_addr <= addr%NUMBER_OF_SETS;
+	end
+end
+
+assign data_out = DB0_mem[read_addr];	//keep output stable during read operation
 
 endmodule 
 
 
 
-module data_block1_RAM #(parameter BLOCK_SIZE_WORDS = 4, NUMBER_OF_SET = 1000)(
+module data_block1_RAM #(parameter INDEX_BIT = 10, BLOCK_SIZE_WORDS = 4, NUMBER_OF_SETS = 1000)(
 	input					clk,
-	input	[31:0] 				addr,
+	input	[INDEX_BIT-1:0] 		addr,
 	input	[(32*BLOCK_SIZE_WORDS)-1:0] 	data_in,	//main memory has 32 bit addr each slot has 128 bits
 	input					write_enable,
 	output	[(32*BLOCK_SIZE_WORDS)-1:0]		data_out);
 
-reg [(32*BLOCK_SIZE_WORDS)-1:0] DB1_mem [0:NUMBER_OF_SET-1]; 	//4 words, 8 bypes in a word so row x col = 32*BLOCK_SIZE_WORDS x NUMBER_OF_SET-1
+localparam LINES = 1 << INDEX_BIT;
 
+reg [(32*BLOCK_SIZE_WORDS)-1:0] DB1_mem [0:LINES-1]; 	//4 words, 8 bypes in a word so row x col = 32*BLOCK_SIZE_WORDS x LINES
+
+integer i;
 initial begin
-	$readmemb("data_block1.dat", DB1_mem);
-end
-
-reg [31:0] read_addr;
-
-always@(posedge clk) begin
-	if(write_enable) begin
-		DB1_mem[addr] <= data_in;
-		read_addr <= addr;
+for(i = 0; i < 1000; i = i + 1) begin
+	DB1_mem[i][127:96] 	= i*4 + 4000;
+	DB1_mem[i][95:64] 	= i*4 + 1 + 4000;
+	DB1_mem[i][63:32] 	= i*4 + 2 + 4000;
+	DB1_mem[i][31:0] 	= i*4 + 3 + 4000;
 	end
 end
 
-assign dout = DB1_mem[read_addr];	//keep output stable during read operation
+
+reg [INDEX_BIT-1:0] read_addr;
+
+always@(posedge clk) begin
+	if(write_enable) begin
+		DB1_mem[addr%NUMBER_OF_SETS] <= data_in;
+		read_addr <= addr%NUMBER_OF_SETS;
+	end
+end
+
+assign data_out = DB1_mem[read_addr];	//keep output stable during read operation
 
 endmodule 
 
 
 
-module tag1_RAM #(parameter TAG_BIT = 20, NUMBER_OF_SET = 1000)(
-	input					clk,
-	input	[31:0] 				addr,
-	input	[(TAG_BIT+3)-1:0] 		data_in,	//TAG_BIT + DIRTY_BIT + USED_BIT + VALID_BIT = 23
-	input					write_enable,
-	output	[(TAG_BIT+3)-1:0]		data_out);
+module tag0_RAM #(parameter INDEX_BIT = 10, TAG_BIT = 23, NUMBER_OF_SETS = 1000)(
+	input						clk,
+	input	[INDEX_BIT-1:0] 	addr,
+	input	[TAG_BIT-1:0] 		data_in,	//INDEX_BIT + DIRTY_BIT + USED_BIT + VALID_BIT = 23
+	input						write_enable,
+	output	[TAG_BIT-1:0]		data_out);
 
-reg [(TAG_BIT+3)-1:0] Tag1_mem [0:NUMBER_OF_SET-1]; 	//4 words, 8 bypes in a word so row x col = 32*BLOCK_SIZE_WORDS x NUMBER_OF_SET-1
+localparam LINES = 1 << INDEX_BIT;
 
+reg [TAG_BIT-1:0] Tag0_mem [0:LINES-1]; 	//4 words, 8 bypes in a word so row x col = TAG_BIT x LINES
+
+integer i;
 initial begin
-	$readmemb("tag1.dat", Tag1_mem);
+for(i = 0; i < 1000; i = i + 1)
+	Tag0_mem[i] = 20'd0;
 end
 
-reg [31:0] read_addr;
+
+reg [INDEX_BIT-1:0] read_addr;
 
 always@(posedge clk) begin
 	if(write_enable) begin
-		Tag1_mem[addr] <= data_in;
-		read_addr <= addr;
+		Tag0_mem[addr%NUMBER_OF_SETS] <= data_in;
+		read_addr <= addr%NUMBER_OF_SETS;
 	end
 end
 
-assign dout = Tag1_mem[read_addr];	//keep output stable during read operation
+assign data_out = Tag0_mem[read_addr];	//keep output stable during read operation
+
 
 endmodule 
 
 
-module tag2_RAM #(parameter TAG_BIT = 20, NUMBER_OF_SET = 1000)(
-	input					clk,
-	input	[31:0] 				addr,
-	input	[(TAG_BIT+3)-1:0] 		data_in,	//TAG_BIT + DIRTY_BIT + USED_BIT + VALID_BIT = 23
-	input					write_enable,
-	output	[(TAG_BIT+3)-1:0]		data_out);
+module tag1_RAM #(parameter INDEX_BIT = 10, TAG_BIT = 23, NUMBER_OF_SETS = 1000)(
+	input						clk,
+	input	[INDEX_BIT-1:0] 	addr,
+	input	[TAG_BIT-1:0] 		data_in,	//INDEX_BIT + DIRTY_BIT + USED_BIT + VALID_BIT = 23
+	input						write_enable,
+	output	[TAG_BIT-1:0]		data_out);
 
-reg [(TAG_BIT+3)-1:0] Tag2_mem [0:NUMBER_OF_SET-1]; 	//4 words, 8 bypes in a word so row x col = 32*BLOCK_SIZE_WORDS x NUMBER_OF_SET-1
+localparam LINES = 1 << INDEX_BIT;
 
+reg [TAG_BIT-1:0] Tag1_mem [0:LINES-1]; 	//4 words, 8 bypes in a word so row x col = TAG_BIT x LINES
+
+integer i;
 initial begin
-	$readmemb("tag2.dat", Tag2_mem);
+for(i = 0; i < 1000; i = i + 1)
+	Tag1_mem[i] = 20'd0;
 end
 
-reg [31:0] read_addr;
+reg [INDEX_BIT-1:0] read_addr;
 
 always@(posedge clk) begin
 	if(write_enable) begin
-		Tag2_mem[addr] <= data_in;
-		read_addr <= addr;
+		Tag1_mem[addr%NUMBER_OF_SETS] <= data_in;
+		read_addr <= addr%NUMBER_OF_SETS;
 	end
 end
 
-assign dout = Tag2_mem[read_addr];	//keep output stable during read operation
+assign data_out = Tag1_mem[read_addr];	//keep output stable during read operation
 
 endmodule 

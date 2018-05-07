@@ -15,7 +15,7 @@ endmodule
 module tri_buf #(parameter DATA_BLOCK = 128)(
 	input 	[DATA_BLOCK - 1 : 0] a,
 	input		enable,
-	output		b
+	output 	[DATA_BLOCK - 1 : 0] b
 );
 
 assign b = enable ? a : {DATA_BLOCK{1'dz}};
