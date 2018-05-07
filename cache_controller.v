@@ -1,6 +1,6 @@
 module cache_controller (
 	input 			clk,			//Same clk from the processor
-	input			reset,			//Active low sychronous reset
+	input			reset,			//Active low asychronous reset
 	input			ready_mem,		//Active high signal from the main memory
 	
 	input 	[31:0]		data_up,		//data input from the processor
@@ -171,12 +171,17 @@ mux4 #(WORD_SIZE_BIT) block_offset_mux(	.s(block_offset),
 					.d3(db_mux_in[4*WORD_SIZE_BIT-1:WORD_SIZE_BIT*3]), 
 					.y(word_mux_out)
 					);
+
+
+assign data_mem = (write_mem)? write_mem_word : 32'dZ;
+assign data_up = (!write_up)? read_data_word : 32'dZ;
+
 /*
 // State Machine
 */
 
 always @(posedge clk, negedge reset) begin
-	if(reset) 
+	if(!reset) 
 	begin
 		//reset outputs
 		addr_mem  		<= {32'd0};
@@ -219,7 +224,7 @@ always @(posedge clk, negedge reset) begin
 	end
 end
 
-always@(state, read_up, write_up, hit, ready_mem, valid, dirty, hit_way_0, 
+always@(state, read_up, write_up, hit, ready_mem, valid, dirty, hit_way_0,
 		used_way_0, used_way_1, block_offset, update_flag, read_not_write)
 begin
 	//need to set come vars to 0, will come to this after making the first state
@@ -284,11 +289,12 @@ begin
 	
 							   	end
 							1'd1:	begin
+									read_data_word 		<= word_mux_out;				
 									next_state 		<= IDLE;
 									write_enable_Tag0	<= 1'd1;
 									write_enable_Tag1	<= 1'd1;
 									stall_up			<= 1'd0;
-									read_data_word 		<= word_mux_out;
+					
 										if (hit_way_0) begin
 											if (used_way_0)	
 												tag_write_0	<= tag_read_0;
@@ -499,21 +505,21 @@ begin
 end
 
 // TAG RAM For Way_0
-tag0_RAM #(INDEX_BIT,TAG_BIT, NUMBER_OF_SETS) tag_0_ram(
+tag0_RAM #(INDEX_BIT,TOTAL_TAG_SIZE_BIT, NUMBER_OF_SETS) tag_0_ram(
 					.clk(clk),
 	 				.addr(index),
-					.data_in(tag_write_0[19:0]),	
+					.data_in(tag_write_0),	
 					.write_enable(write_enable_Tag0),
-					.data_out(tag_read_0[19:0])
+					.data_out(tag_read_0)
 					);
 
 // TAG RAM For Way_1
-tag1_RAM #(INDEX_BIT,TAG_BIT, NUMBER_OF_SETS) tag_1_ram(
+tag1_RAM #(INDEX_BIT,TOTAL_TAG_SIZE_BIT, NUMBER_OF_SETS) tag_1_ram(
 					.clk(clk),
 	 				.addr(index),
-					.data_in(tag_write_1[19:0]),	
+					.data_in(tag_write_1),	
 					.write_enable(write_enable_Tag1),
-					.data_out(tag_read_1[19:0])
+					.data_out(tag_read_1)
 					);
 
 

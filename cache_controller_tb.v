@@ -33,58 +33,62 @@ cache_controller DUT(
 //The purpose of this statemnet is to eliminate the case where 
 //both processor and memory try to write to the processor at the same time
 
+assign data_mem	= (!write_mem)?	dmem: 32'dz;
 assign data_up = write_up ? wcpu : 32'dz;
-assign data_mem	= !write_mem?	dmem: 32'dz;
+
 
 
 always begin
 	#10 clk = ~clk;
-end 
+end
 	
 initial begin
 	//setting inputs to 0;
 	clk	 		<= 1'b0;
 	addr_up		<= 32'b0;
-	reset	 	<= 1'b1;
+	reset	 	<= 1'b0;
 	ready_mem	<= 1'b1;
 	read_up	 	<= 1'b0;
 	write_up	<= 1'b0;
 	wcpu <= 32'd0;
+	
+	#80
 
+	reset <= 1'b1;
+	
+	#40
 
-	#20
-	reset <= 1'b0;
-	#20
 	//testing each individual step
 	//Read from location
 	read_up 	= 1'b1;
-	addr_up = 32'b0000_0000_0000_0000_0000_0000_0001_0001;
+	addr_up = 32'b0000_0000_0000_0000_0100_0000_0001_0011;
 	dcpu = data_up;
 	#20
 	read_up = 1'd1;
 	dcpu = data_up;
 	#20
 	read_up = 1'd0;
-	#40
+	#40;
 
 	//  Read to same location
 	write_up  = 1'd1;
-	wcpu	= 32'd100;
-	addr_up = 32'b0000_0000_0000_0000_0000_0000_0001_0001;
+	wcpu	= 32'd18;
+	addr_up = 32'b0000_0000_0000_0000_0100_0000_0001_0011;
 	#40
+
 	write_up = 1'd0;
 	#40
 
 	// Simple Read from same location to check updated data
 	read_up = 1'd1;
-	addr_up = 32'b0000_0000_0000_0000_0000_0000_0001_0001;
+	addr_up = 32'b0000_0000_0000_0000_0100_0000_0001_0011;
 	dcpu = data_up;
 	#20
 	read_up = 1'd1;
 	dcpu = data_up;
 	#20
 	read_up = 1'd0;
-	#40
+	#40;
 
 
 	// Read Miss, reads data from Main Memory (check the dirty bit)
@@ -93,7 +97,7 @@ initial begin
 	dcpu = data_up;
 	#20
 	read_up = 1'd1;
-	dcpu = data_cpu;
+	dcpu = data_up;
 	@(posedge read_mem);
 	ready_mem = 0;
 	#400					//20 cycles to stall to access main memory
@@ -108,8 +112,8 @@ initial begin
 	dmem = 32'h3333;		//last word
 	#80
 	read_up = 1'd0;
-	#20
-	
+	#20;
+/*
 	// Read Miss Eviction Policy Test
 	read_up = 1'd1;
 	addr_up = 32'b1100_0000_0000_0000_0000_1111_1111_0011;
@@ -130,7 +134,7 @@ initial begin
 	#20
 	dmem = 32'hAAAA;		//first word
 	#20
-	dmem = 32'hBBBB:		//second word
+	dmem = 32'hBBBB;		//second word
 	#20
 	dmem = 32'hCCCC;		//thrid word
 	#20 
@@ -139,6 +143,7 @@ initial begin
 	read_up = 1'd0;
 	#100
 	$stop;
+*/
 end 
 
 
