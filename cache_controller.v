@@ -224,7 +224,7 @@ always @(posedge clk, negedge reset) begin
 	end
 end
 
-always@(state, read_up, write_up, hit, ready_mem, valid, dirty, hit_way_0,
+always@(state, read_up, write_up, hit, ready_mem, valid, dirty, hit_way_0, data_mem, 
 		used_way_0, used_way_1, block_offset, update_flag, read_not_write)
 begin
 	//need to set come vars to 0, will come to this after making the first state

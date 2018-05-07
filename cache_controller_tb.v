@@ -100,9 +100,9 @@ initial begin
 	dcpu = data_up;
 	@(posedge read_mem);
 	ready_mem = 0;
-	#400					//20 cycles to stall to access main memory
+	#80				//20 cycles to stall to access main memory
 	ready_mem = 1;	
-	#20
+	#20				
 	dmem = 32'h0000;		//first word
 	#20
 	dmem = 32'h1111;		//second word
@@ -110,6 +110,7 @@ initial begin
 	dmem = 32'h2222;		//thrid word
 	#20
 	dmem = 32'h3333;		//last word
+
 	#80
 	read_up = 1'd0;
 	#20;
