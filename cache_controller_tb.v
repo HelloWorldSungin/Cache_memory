@@ -110,26 +110,25 @@ initial begin
 	dmem = 32'h2222;		//thrid word
 	#20
 	dmem = 32'h3333;		//last word
-
 	#80
 	read_up = 1'd0;
 	#20;
-/*
+
 	// Read Miss Eviction Policy Test
 	read_up = 1'd1;
-	addr_up = 32'b1100_0000_0000_0000_0000_1111_1111_0011;
+	#40
+	addr_up = 32'b0000_0000_0000_0000_1000_0000_0011_1011;
 	dcpu = data_up;
 	#20
 	read_up = 1'd1;
 	dcpu = data_up;
 	@(posedge write_mem);
 	ready_mem = 1'd0;
-	#400					//20 cycles of stall to access main memory
+	#80					//20 cycles of stall to access main memory
 	ready_mem = 1'd1;
-
 	@(posedge read_mem);
 	ready_mem = 1'd0;
-	#400					//20 cycles of stall to access main memory
+	#80					//20 cycles of stall to access main memory
 
 	ready_mem = 1'd1;
 	#20
@@ -144,7 +143,7 @@ initial begin
 	read_up = 1'd0;
 	#100
 	$stop;
-*/
+
 end 
 
 
