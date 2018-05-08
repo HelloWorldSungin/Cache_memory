@@ -11,7 +11,7 @@ wire 		read_mem, write_mem, stall_up;
 wire [31:0]	addr_mem;
 
 //Bi-directional signals
-reg [31:0]	dcpu, wcpu, dmem, wmem;
+reg [31:0]	d_up, w_up, dmem, wmem;
 
 cache_controller DUT(
 						.clk(clk),				//Same clk from the processor
@@ -34,7 +34,7 @@ cache_controller DUT(
 //both processor and memory try to write to the processor at the same time
 
 assign data_mem	= (!write_mem)?	dmem: 32'dz;
-assign data_up = write_up ? wcpu : 32'dz;
+assign data_up = write_up ? w_up : 32'dz;
 
 
 
@@ -43,14 +43,14 @@ always begin
 end
 	
 initial begin
-	//setting inputs to 0;
-	clk	 		<= 1'b0;
+	// setting inputs to 0;
+	clk	 	<= 1'b0;
 	addr_up		<= 32'b0;
 	reset	 	<= 1'b0;
 	ready_mem	<= 1'b1;
 	read_up	 	<= 1'b0;
 	write_up	<= 1'b0;
-	wcpu <= 32'd0;
+	w_up <= 32'd0;
 	
 	#80
 
@@ -59,72 +59,108 @@ initial begin
 	#40
 
 
-	//Read from cache location (hit)
-	//STATE: IDLE(0) -> READ(1) -> IDLE(0)
-	//expected value: data_up = 3 and dcpu = 3 by half cycle late
+	// Read from cache location (hit)
+	// STATE: IDLE(0) -> READ(1) -> IDLE(0)
+	// expected value: data_up = 3 and d_up = 3 by half cycle late
 	read_up 	= 1'd1;
 	addr_up = 32'b0000_0000_0000_0000_0000_0000_0000_0000;	
-	dcpu = data_up;
+	d_up = data_up;
 	#20						
 	read_up = 1'd1;
-	dcpu = data_up;
+	d_up = data_up;
 	#20
 	read_up = 1'd0;									
 	#40;
 
-	//write to the same cache location (hit)
-	//STATE: IDLE(0) -> WRITE(2) -> IDLE(0)
-	//expected value: data_up = 100
+	// write to the same cache location (hit)
+	// STATE: IDLE(0) -> WRITE(2) -> IDLE(0)
+	// expected value: data_up = 100
 	write_up  = 1'd1;
-	wcpu	= 32'd100;
-	addr_up = 32'b0000_0000_0000_0000_0000_0000_0000_0000;
+	w_up	= 32'd100;
+	addr_up = 32'd0000_0000_0000_0000_0000_0000_0000_0000;
 	#40
 	write_up = 1'd0;
 	#40
 
-	// read from same location to check if data is updated to 100
+	// read from the same location to check if data is updated to 100
+	// STATE: IDLE(0) -> READ(2) ->IDLE(0)
+	// expected value: data_up = 100 and d_up = 100 by half cycle late
 	read_up = 1'd1;
-	addr_up = 32'b0000_0000_0000_0000_0000_0000_0000_0000;
-	dcpu = data_up;
+	addr_up = 32'd0000_0000_0000_0000_0000_0000_0000_0000;
+	d_up = data_up;
 	#20
 	read_up = 1'd1;
-	dcpu = data_up;
+	d_up = data_up;
 	#20
 	read_up = 1'd0;
 	#40;
 
-	/*
-	// Read Miss, reads data from Main Memory (check the dirty bit)
+	// Read Miss, reads data from Main Memory (Dirty bit = 0, valid bit = 1)
+	// STATE: IDLE(0) -> READ(1) -> READ_MEM(3) -> WAIT_FOR_MEM(4) -> UPDATE_CACHE(6)
+	// Expected value: read_mem_block = 9000, 9001, 9002, 9003. data_up = 9003 
 	read_up = 1'd1;
-	addr_up = 32'b1100_0000_0000_0000_0000_0000_1001_0001;
-	dcpu = data_up;
+	addr_up = 32'd0000_0011_0001_0001_0010_0000_0000_1000;
+	
+	d_up = data_up;
 	#20
 	read_up = 1'd1;
-	dcpu = data_up;
+	d_up = data_up;
 	@(posedge read_mem);
 	ready_mem = 0;
-	#80				//20 cycles to stall to access main memory
+	#100				//5 cycles to stall to access main memory (in pipeline, it's going to stall for 20 cycles)
 	ready_mem = 1;	
-	#20				
-	dmem = 32'h0000;		//first word
+	#20	
+	@(negedge clk);			
+	dmem = 32'd9003;		//first word
 	#20
-	dmem = 32'h1111;		//second word
+	dmem = 32'd9002;		//second word
 	#20
-	dmem = 32'h2222;		//thrid word
+	dmem = 32'd9001;		//thrid word
 	#20
-	dmem = 32'h3333;		//last word
+	dmem = 32'd9000;		//last word
 	#80
 	read_up = 1'd0;
 	#20;
 
-	// Read Miss Eviction Policy Test
+	// Read Miss, reads data from Main Memory (Dirty bit = 0, valid bit = 0)
+	// STATE: IDLE(0) -> READ(1) -> READ_MEM(3) -> WAIT_FOR_MEM(4) -> UPDATE_CACHE(6)
+	// Expected value: read_mem_block = 8000, 8001, 8002, 8003. data_up = 8000 
 	read_up = 1'd1;
-	#40
-	addr_up = 32'b1000_0000_0000_0000_1000_0000_0001_1011;
-	dcpu = data_up;
+	addr_up = 32'd1101_1100_0010_0000_0110_0000_0000_0011;
+
+	d_up = data_up;
 	#20
 	read_up = 1'd1;
-	dcpu = data_up;
+	d_up = data_up;
+	@(posedge read_mem);
+	ready_mem = 0;
+	#100				//5 cycles to stall to access main memory (in pipeline, it's going to stall for 20 cycles)
+	ready_mem = 1;	
+	#20	
+	@(negedge clk);			
+	dmem = 32'd8003;		//first word
+	#20
+	dmem = 32'd8002;		//second word
+	#20
+	dmem = 32'd8001;		//thrid word
+	#20
+	dmem = 32'd8000;		//last word
+	#80
+	read_up = 1'd0;
+	#20;
+
+
+
+	//Read Miss Eviction Write Back Policy Test (Dirty bit = 1, valid bit = 1)
+	//STATE: IDLE(0)-> READ(1)-> UPDATE_MEM(5)-> WAIT_FOR_MEM(4)-> READ_MEM(3)-> WAIT_FOR_MEM(4)-> UPDATE_CACHE(6)
+	//Expected values:dmem = 10003->10002->10001->10000, read_mem_block= 10000->10001->10002->10003. data_up = 10001
+	read_up = 1'd1;
+	#40
+	addr_up = 32'b1111_0111_1010_0000_0110_0000_0001_1001;
+	d_up = data_up;
+	#20
+	read_up = 1'd1;
+	d_up = data_up;
 	@(posedge write_mem);
 	ready_mem = 1'd0;
 	#80					//20 cycles of stall to access main memory
@@ -135,18 +171,17 @@ initial begin
 
 	ready_mem = 1'd1;
 	#20
-	dmem = 32'hAAAA;		//first word
+	dmem = 32'd10003;		//first word
 	#20
-	dmem = 32'hBBBB;		//second word
+	dmem = 32'd10002;		//second word
 	#20
-	dmem = 32'hCCCC;		//thrid word
+	dmem = 32'd10001;		//thrid word
 	#20 
-	dmem = 32'hDDDD;		//last word
+	dmem = 32'd10000;		//last word
 	#80
 	read_up = 1'd0;
 	#100
 	$stop;
-*/
 end 
 
 

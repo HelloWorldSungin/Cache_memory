@@ -224,7 +224,7 @@ always @(posedge clk, negedge reset) begin
 	end
 end
 
-always@(state, read_up, write_up, hit, ready_mem, valid, dirty, hit_way_0,
+always@(state, read_up, write_up, hit, ready_mem, valid, dirty, hit_way_0, 
 		used_way_0, used_way_1, block_offset, update_flag, read_not_write, posedge clk)
 begin
 	//need to set come vars to 0, will come to this after making the first state
@@ -297,10 +297,8 @@ begin
 									stall_up			<= 1'd0;
 					
 										if (hit_way_0) begin
-											if (used_way_0)	begin
+											if (used_way_0)	
 												tag_write_0	<= tag_read_0;
-												$display("test");
-											end
 											else 
 												tag_write_0 <= {tag_read_0[VALID_BIT-1], 1'd1, tag_read_0[DIRTY_BIT_INDEX:0]};
 											if (used_way_1) 
@@ -450,6 +448,7 @@ begin
 						begin
 							read_mem_block 	<= {data_mem, read_mem_block[WORD_SIZE_BIT*4-1:WORD_SIZE_BIT]};
 							word_counter <= {1'd1, word_counter[3:1]};
+							$display("test");
 						end
 						else 
 						begin
