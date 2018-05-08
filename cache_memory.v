@@ -85,14 +85,14 @@ reg [22:0] Tag0_mem [0:LINES-1]; 	//4 words, 8 bypes in a word so row x col = TA
 
 integer i;
 initial begin
-	Tag0_mem[0] 	= 23'b1000_0000_0000_0000_0000_000;		//only valid bit = 1
+	Tag0_mem[0] 	= 23'b1100_0000_0000_0000_0000_000;		//only valid bit = 1
 	Tag0_mem[1]	= 23'b1000_0000_0000_0000_0000_001;		//only valid bit = 1
 	Tag0_mem[2] 	= 23'b1000_0000_0000_0000_0000_010;		//only valid bit = 1
 	Tag0_mem[3] 	= 23'b1000_0000_0000_0000_0000_011;		//only valid bit = 1
 	Tag0_mem[4] 	= 23'b1100_0000_0000_0000_0000_100;		//valid bit and used bit = 1
 	Tag0_mem[5]  	= 23'b1100_0000_0000_0000_0000_101;		//valid bit and used bit = 1
-	Tag0_mem[6] 	= 23'b1010_0000_0000_0000_0001_000;		//valid bit and dirty bit = 1
-	Tag0_mem[7] 	= 23'b0000_0000_0000_0000_1000_000;		//just address with all three bits = 0
+	Tag0_mem[6] 	= 23'b1010_0000_0000_0000_0000_110;		//valid bit and dirty bit = 1
+	Tag0_mem[7] 	= 23'b0000_0000_0000_0010_0000_000;		//just address with all three bits = 0
 for(i = 8; i <1000; i = i + 1)begin
 	Tag0_mem[i] 	= 23'd0;
 end
@@ -128,14 +128,14 @@ reg [22:0] Tag1_mem [0:LINES-1]; 	//4 words, 8 bypes in a word so row x col = TA
 
 integer i;
 initial begin
-	Tag1_mem[0] 	= 23'b1000_0000_0000_0001_0001_000;		//only valid bit = 1
-	Tag1_mem[1]	= 23'b1000_0000_0000_0001_0010_001;		//only valid bit = 1
-	Tag1_mem[2] 	= 23'b0000_0000_0000_0001_0001_010;		//only valid bit = 1
-	Tag1_mem[3] 	= 23'b1010_0001_0000_0000_0000_011;		//only valid bit = 1
-	Tag1_mem[4] 	= 23'b1100_0001_0000_0000_0000_100;		//valid bit and used bit = 1
-	Tag1_mem[5]  	= 23'b1100_0010_0000_0000_0000_101;		//valid bit and used bit = 1
-	Tag1_mem[6] 	= 23'b1010_0010_0000_0000_0001_000;		//valid bit and dirty bit = 1
-	Tag1_mem[7] 	= 23'b0000_0010_0100_0000_1000_000;		//just address with all three bits = 0
+	Tag1_mem[0] 	= 23'b0000_1000_0000_0111_1101_000;		//only used bit = 1
+	Tag1_mem[1]	= 23'b1100_0000_0000_0111_1101_001;		//valid bit and used bit = 1
+	Tag1_mem[2] 	= 23'b0000_1000_0000_0111_1101_010;		//valid bit is 0
+	Tag1_mem[3] 	= 23'b0000_1100_0000_0111_1101_011;		//valid bit is 0
+	Tag1_mem[4] 	= 23'b1000_0000_0000_0111_1101_100;		//only valid bit = 1
+	Tag1_mem[5]  	= 23'b0000_0000_0010_0111_1101_101;		//valid bit is 0
+	Tag1_mem[6] 	= 23'b1100_0000_0000_0111_1101_110;		//valid bit and dirty bit = 1
+	Tag1_mem[7] 	= 23'b1110_0000_0000_0111_1101_111;		//just address with all three bits = 0
 for(i = 8; i <1000; i = i + 1)begin
 	Tag1_mem[i] 	= 23'd0;
 end

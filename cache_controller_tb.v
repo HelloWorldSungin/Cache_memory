@@ -58,30 +58,33 @@ initial begin
 	
 	#40
 
-	//testing each individual step
-	//Read from location
-	read_up 	= 1'b1;
-	addr_up = 32'b0000_0000_0000_0000_0100_0000_0001_0011;
+
+	//Read from cache location (hit)
+	//STATE: IDLE(0) -> READ(1) -> IDLE(0)
+	//expected value: data_up = 3 and dcpu = 3 by half cycle late
+	read_up 	= 1'd1;
+	addr_up = 32'b0000_0000_0000_0000_0000_0000_0000_0000;	
 	dcpu = data_up;
-	#20
+	#20						
 	read_up = 1'd1;
 	dcpu = data_up;
 	#20
-	read_up = 1'd0;
+	read_up = 1'd0;									
 	#40;
 
-	//  Read to same location
+	//write to the same cache location (hit)
+	//STATE: IDLE(0) -> WRITE(2) -> IDLE(0)
+	//expected value: data_up = 100
 	write_up  = 1'd1;
-	wcpu	= 32'd18;
-	addr_up = 32'b0000_0000_0000_0000_0100_0000_0001_0011;
+	wcpu	= 32'd100;
+	addr_up = 32'b0000_0000_0000_0000_0000_0000_0000_0000;
 	#40
-
 	write_up = 1'd0;
 	#40
 
-	// Simple Read from same location to check updated data
+	// read from same location to check if data is updated to 100
 	read_up = 1'd1;
-	addr_up = 32'b0000_0000_0000_0000_0100_0000_0001_0011;
+	addr_up = 32'b0000_0000_0000_0000_0000_0000_0000_0000;
 	dcpu = data_up;
 	#20
 	read_up = 1'd1;
@@ -90,7 +93,7 @@ initial begin
 	read_up = 1'd0;
 	#40;
 
-
+	/*
 	// Read Miss, reads data from Main Memory (check the dirty bit)
 	read_up = 1'd1;
 	addr_up = 32'b1100_0000_0000_0000_0000_0000_1001_0001;
@@ -117,7 +120,7 @@ initial begin
 	// Read Miss Eviction Policy Test
 	read_up = 1'd1;
 	#40
-	addr_up = 32'b0000_0000_0000_0000_1000_0000_0011_1011;
+	addr_up = 32'b1000_0000_0000_0000_1000_0000_0001_1011;
 	dcpu = data_up;
 	#20
 	read_up = 1'd1;
@@ -143,7 +146,7 @@ initial begin
 	read_up = 1'd0;
 	#100
 	$stop;
-
+*/
 end 
 
 
