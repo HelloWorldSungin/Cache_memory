@@ -77,7 +77,7 @@ initial begin
 	// expected value: data_up = 100
 	write_up  = 1'd1;
 	w_up	= 32'd100;
-	addr_up = 32'd0000_0000_0000_0000_0000_0000_0000_0000;
+	addr_up = 32'b0000_0000_0000_0000_0000_0000_0000_0000;
 	#40
 	write_up = 1'd0;
 	#40
@@ -86,7 +86,7 @@ initial begin
 	// STATE: IDLE(0) -> READ(2) ->IDLE(0)
 	// expected value: data_up = 100 and d_up = 100 by half cycle late
 	read_up = 1'd1;
-	addr_up = 32'd0000_0000_0000_0000_0000_0000_0000_0000;
+	addr_up = 32'b0000_0000_0000_0000_0000_0000_0000_0000;
 	d_up = data_up;
 	#20
 	read_up = 1'd1;
@@ -99,7 +99,7 @@ initial begin
 	// STATE: IDLE(0) -> READ(1) -> READ_MEM(3) -> WAIT_FOR_MEM(4) -> UPDATE_CACHE(6)
 	// Expected value: read_mem_block = 9000, 9001, 9002, 9003. data_up = 9003 
 	read_up = 1'd1;
-	addr_up = 32'd0000_0011_0001_0001_0010_0000_0000_1000;
+	addr_up = 32'b0000_0011_0001_0001_0010_0000_0000_1000;
 	
 	d_up = data_up;
 	#20
@@ -126,7 +126,7 @@ initial begin
 	// STATE: IDLE(0) -> READ(1) -> READ_MEM(3) -> WAIT_FOR_MEM(4) -> UPDATE_CACHE(6)
 	// Expected value: read_mem_block = 8000, 8001, 8002, 8003. data_up = 8000 
 	read_up = 1'd1;
-	addr_up = 32'd1101_1100_0010_0000_0110_0000_0000_0011;
+	addr_up = 32'b1101_1100_0010_0000_0110_0000_0000_0011;
 
 	d_up = data_up;
 	#20
@@ -186,4 +186,3 @@ end
 
 
 endmodule
-
