@@ -93,7 +93,8 @@ initial begin
 	Tag0_mem[5]  	= 23'b1100_0000_0000_0000_0000_101;		//valid bit and used bit = 1
 	Tag0_mem[6] 	= 23'b1010_0000_0000_0000_0000_110;		//valid bit and dirty bit = 1
 	Tag0_mem[7] 	= 23'b0000_0000_0000_0010_0000_000;		//just address with all three bits = 0
-for(i = 8; i <1000; i = i + 1)begin
+	Tag0_mem[8]	= 23'b1100_0000_0000_0100_0000_111;		//valid bit is 1 and used bit is one also
+for(i = 9; i <1000; i = i + 1)begin
 	Tag0_mem[i] 	= 23'd0;
 end
 
@@ -136,7 +137,8 @@ initial begin
 	Tag1_mem[5]  	= 23'b0000_0000_0010_0111_1101_101;		//valid bit is 0
 	Tag1_mem[6] 	= 23'b1100_0000_0000_0111_1101_110;		//valid bit and dirty bit = 1
 	Tag1_mem[7] 	= 23'b1110_0000_0000_0111_1101_111;		//just address with all three bits = 0
-for(i = 8; i <1000; i = i + 1)begin
+	Tag1_mem[8]	= 23'b1010_0000_0000_0111_1110_000;		//valid and dirty bits are one LRU = 0
+for(i = 9; i <1000; i = i + 1)begin
 	Tag1_mem[i] 	= 23'd0;
 end
 

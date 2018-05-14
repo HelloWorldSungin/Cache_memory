@@ -15,6 +15,8 @@ module cache_controller (
 	output reg			read_mem,	//Active high read to the main memroy
 	output reg			write_mem,	//Active high write to the main memro
 	output reg			stall_up	//Active high stall to the processorc
+	//output reg			read_mem_start	//Start the stall for read_mem
+	//output reg			write_mem_start //Start the stall for write_mem
 );
 /*
 // Parameters
@@ -51,8 +53,15 @@ localparam	UPDATE_CACHE	= 3'd6;
 /*
 // Internal Wires and Registers 
 */
-reg	[BLOCK_SIZE_WORDS-1:0]	word_counter;	//counts word transfer between cache and memory in read & write	
+reg	[BLOCK_SIZE_WORDS-1:0]	word_counter;		//counts word transfer between cache and memory in read & write	
 reg				update_flag;		//update MEM state
+reg 				read_mem_flag;
+reg 				write_mem_flag;
+reg				write_miss_flag;
+reg				read_stall_flag;
+reg				write_stall_flag;
+
+
 
 wire [LAST_TAG_BIT_INDEX:0]		tag;
 wire [INDEX_BIT-1:0]			index; 		
@@ -61,6 +70,10 @@ reg	[WORD_SIZE_BIT-1:0]			read_data_word;
 reg	[WORD_SIZE_BIT-1:0]			write_data_word;
 reg	[WORD_SIZE_BIT-1:0]			write_mem_word;
 reg	[BLOCK_SIZE_BIT-1:0]		read_mem_block;
+wire	[WORD_SIZE_BIT-1:0]		read_mem_word0;
+wire	[WORD_SIZE_BIT-1:0]		read_mem_word1;
+wire	[WORD_SIZE_BIT-1:0]		read_mem_word2;
+wire	[WORD_SIZE_BIT-1:0]		read_mem_word3;
 reg	[BLOCK_SIZE_BIT-1:0]		write_mem_block;
 
 reg	read_not_write;		// when reading = 1, writing = 0
@@ -175,6 +188,10 @@ mux4 #(WORD_SIZE_BIT) block_offset_mux(	.s(block_offset),
 
 assign data_mem = (write_mem)? write_mem_word : 32'dZ;
 assign data_up = (!write_up)? read_data_word : 32'dZ;
+assign read_mem_word0 = read_mem_block[127:96];
+assign read_mem_word1 = read_mem_block[95:64];
+assign read_mem_word2 = read_mem_block[63:32];
+assign read_mem_word3 = read_mem_block[31:0];
 
 /*
 // State Machine
@@ -188,10 +205,17 @@ always @(posedge clk, negedge reset) begin
 		read_mem		<= 1'd0;
 		write_mem		<= 1'd0;
 		stall_up		<= 1'd0;
+		//read_mem_start		<= 1'd0;
+		//write_mem_start		<= 1'd0;
 
 		//reset internal control signals
 		word_counter		<= {BLOCK_SIZE_WORDS{1'd0}};
 		update_flag		<= 1'd0;
+		read_mem_flag		<= 1'd0;
+		write_mem_flag		<= 1'd0;
+		write_miss_flag		<= 1'd0;
+		read_stall_flag		<= 1'd0;
+		write_stall_flag	<= 1'd0;
 		read_data_word 		<= {WORD_SIZE_BIT{1'd0}};
 		write_data_word 	<= {WORD_SIZE_BIT{1'd0}};
 		write_mem_word 		<= {WORD_SIZE_BIT{1'd0}};
@@ -233,13 +257,21 @@ begin
 
 		IDLE:			begin
 						//set outputs 
+						if(!read_stall_flag | !write_stall_flag)
 						stall_up			<= 1'd0;
+						else
+						stall_up 			<= 1'd1;
 						read_mem 			<= 1'd0;
 						write_mem 			<= 1'd0;
+						//read_mem_start			<= 1'd0;
+						//write_mem_start			<= 1'd0;
 					
 						//set internal control signals
 						word_counter		<= {BLOCK_SIZE_WORDS{1'd0}};
 						update_flag 		<= 1'd0;
+						read_mem_flag		<= 1'd0;
+						write_mem_flag		<= 1'd0;
+						write_miss_flag		<= 1'd0;
 						write_mem_word		<= {WORD_SIZE_BIT{1'd0}};
 						write_mem_block 	<= {BLOCK_SIZE_BIT{1'd0}};
 						write_enable_DB0 	<= 1'd0;
@@ -253,7 +285,7 @@ begin
 						//set internal data and address buses signals 
 						addr_latch 			<= addr_up;
 						db_write 			<= {(32*BLOCK_SIZE_WORDS){1'd0}};
-					
+						
 						if(read_up)
 						begin
 							next_state 		<= READ;
@@ -267,26 +299,33 @@ begin
 						else begin
 							next_state		<= state;
 						end
+						if(read_stall_flag) next_state 	<= READ;
+						if(write_stall_flag) next_state <= WRITE;
 					end
 		READ:			begin
 						write_enable_DB0 <= 0;
 						write_enable_DB0 <= 0;
-	
 						case(hit) 
 							1'd0: 	begin
 									//updating values up the memory
+									read_stall_flag = 1;
 									tag_str_0	<= tag_read_0;	
 									tag_str_1	<= tag_read_1;
 									db_str_0	<= db_read_0;
 									db_str_1	<= db_read_1;
 									stall_up	<= 1'd1;
-									if(ready_mem)
-										if(valid & dirty)
+									read_mem 	<= 1'd1;
+									//if(ready_mem)
+										if(valid & dirty) begin
 											next_state 	<= UPDATE_MEM;
-										else 
+											//read_mem 	<= 1'd0; 	//
+										end
+										else begin 
 											next_state 	<= READ_MEM;
-									else 
-										next_state <= state;
+											
+										end
+									//else 
+										//next_state <= state;
 	
 							   	end
 							1'd1:	begin
@@ -294,8 +333,13 @@ begin
 									next_state 		<= IDLE;
 									write_enable_Tag0	<= 1'd1;
 									write_enable_Tag1	<= 1'd1;
-									stall_up			<= 1'd0;
-					
+									if(read_stall_flag)
+									begin
+									@(negedge clk);
+									stall_up		<= 1'd0;
+									end
+									else stall_up 		<= 1'd0;
+									read_stall_flag		<= 1'd0;
 										if (hit_way_0) begin
 											if (used_way_0)	
 												tag_write_0	<= tag_read_0;
@@ -320,20 +364,24 @@ begin
 						endcase
 					end
 		WRITE:			begin
+						write_mem_flag <=1'd1;
 						case(hit)
 							0'd0:	begin
+									//write_mem_start	<= 1'd1;
+									write_miss_flag <= 1'd1;
 									tag_str_0	<= tag_read_0;
 									tag_str_1	<= tag_read_1;
 									db_str_0	<= db_read_0;
 									db_str_1	<= db_read_1;
 									stall_up	<= 1'd1;
-									if(ready_mem)
+									write_mem 	<= 1'd1;	//might need another signal
+									//if(ready_mem)
 										if(valid & dirty)
 											next_state	<= UPDATE_MEM;
 										else
 											next_state	<= READ_MEM;
-									else
-										next_state	<= state;
+									//else
+										//next_state	<= state;
 									end
 							1'd1:	begin
 									next_state 	<= IDLE;
@@ -382,32 +430,39 @@ begin
 						endcase
 						end
 		READ_MEM:		begin
+						//read_mem_start 	 <= 1'd0;
+						//read_mem_flag 	 <= 1'd1;
 						addr_mem 	<= {addr_latch[32-1:2],2'd0};
-						update_flag	<= 1'd0;
 							if(ready_mem)
 							begin
 								read_mem 	<= 1'd1;
 								next_state	<= WAIT_FOR_MEM;
 							end
 							else
-							begin
-								read_mem 	<= 1'd0;
+							begin							
+								if(update_flag)	
+								read_mem 	= 1'd1;
+								else
+								read_mem	= 1'd0;
 								next_state	<= state;
-							end 
-						end
-//Not sure at the write_mem_word and write_mem_block concatenation
+							end
+						update_flag	<= 1'd0; 
+					end
+
 		WAIT_FOR_MEM:	begin
 							if(ready_mem)
 							begin
-								if(update_flag)
+								read_mem 	<= 1'd0; //
+								write_mem 	<= 1'd0; //
+								if(update_flag) begin
 									next_state <= READ_MEM;
+									//read_mem <= 1'd1;
+								end
 								else
 									next_state <= UPDATE_CACHE;
-								read_mem 	<= 1'd0;
-								write_mem 	<= 1'd0;
 							end
-							else
-							begin 
+							else begin
+							 
 								if(!read_not_write)
 								begin
 									write_mem_word 	<= write_mem_block[WORD_SIZE_BIT-1:0];
@@ -415,10 +470,13 @@ begin
 								end
 								next_state <= state;
 							end
-						end
+				end
 
 		UPDATE_MEM:		begin
+							//read_mem_start 	<= 1'd0;
+							//write_mem_start	<= 1'd0;	
 							update_flag	<= 1'd1;
+							read_mem	<= 1'd0;
 							if(used_way_0)
 							begin
 								addr_mem		<= {tag_str_1[LAST_TAG_BIT_INDEX:0], addr_latch[11:2],2'd0};
@@ -431,19 +489,22 @@ begin
 							end
 
 							if(ready_mem)
-							begin
+							 begin
 								write_mem 	<= 1'd1;
 								next_state	<= WAIT_FOR_MEM;
+								read_not_write  <= 0; //
 							end
 							else
 							begin
+								//@(negedge clk);								
 								write_mem 	<= 1'd0;
 								next_state	<= state;
+															
 							end 
 						end
 
 		UPDATE_CACHE:	begin
-							update_flag <= 1'd0;
+						update_flag <= 1'd0;
 						if(word_counter!=4'b1111)
 						begin
 							read_mem_block 	<= {data_mem, read_mem_block[WORD_SIZE_BIT*4-1:WORD_SIZE_BIT]};
@@ -454,13 +515,14 @@ begin
 						begin
 							db_write	<= read_mem_block;
 							next_state	<= IDLE;
+							write_miss_flag <= 1'd0;
 							if (used_way_0) begin
 								tag_write_0 	<= {tag_str_0[VALID_BIT_INDEX], 1'd0, tag_str_0[DIRTY_BIT_INDEX:0]};
 								tag_write_1 	<= {1'd1, 1'd0, 1'd0, addr_latch[32-1:12]};
-								write_enable_DB0	<= 0;
-								write_enable_DB1	<= 1;
-								write_enable_Tag0	<= 0;
-								write_enable_Tag1	<= 0;
+								write_enable_DB0	<= 1;
+								write_enable_DB1	<= 0;
+								write_enable_Tag0	<= 1;
+								write_enable_Tag1	<= 1;
 							end
 							else begin
 								tag_write_0 	<= {1'd1, 1'd1, 1'd0, addr_latch[32-1:12]};
@@ -471,7 +533,7 @@ begin
 								write_enable_Tag1	<= 1;
 							end
 						end
-						end
+				 end
 		default:		begin
 							//reset outputs
 							addr_mem  		<= {32'd0};		
