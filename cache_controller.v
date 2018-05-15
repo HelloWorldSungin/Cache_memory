@@ -1,22 +1,20 @@
 module cache_controller (
-	input 			clk,			//Same clk from the processor
-	input			reset,			//Active low asychronous reset
-	input			ready_mem,		//Active high signal from the main memory
+	input 				clk,			//Same clk from the processor
+	input				reset,			//Active low asychronous reset
+	input				ready_mem,		//Active high signal from the main memory
 	
 	input 	[31:0]		data_up,		//data input from the processor
 	input 	[31:0]		data_mem,		//data input from the main memeory
 
 	input	[31:0]		addr_up,		//input address from the processor
-	output reg[31:0] 		addr_mem,	//output address to the memory
+	output reg[31:0] 	addr_mem,		//output address to the memory
 	
-	input			read_up,		//Active high read from the processor
-	input 			write_up,		//Active high write from the processor
+	input				read_up,		//Active high read from the processor
+	input 				write_up,		//Active high write from the processor
 
-	output reg			read_mem,	//Active high read to the main memroy
-	output reg			write_mem,	//Active high write to the main memro
-	output reg			stall_up	//Active high stall to the processorc
-	//output reg			read_mem_start	//Start the stall for read_mem
-	//output reg			write_mem_start //Start the stall for write_mem
+	output reg			read_mem,		//Active high read to the main memroy
+	output reg			write_mem,		//Active high write to the main memro
+	output reg			stall_up		//Active high stall to the processorc
 );
 /*
 // Parameters
@@ -24,19 +22,19 @@ module cache_controller (
 parameter CACHE_LINES		= 2000;
 parameter BLOCK_SIZE_WORDS	= 4;
 parameter BLOCK_OFFSET_BIT	= $clog2(BLOCK_SIZE_WORDS);
-parameter BLOCK_SIZE_BYTE 	= 4 * BLOCK_SIZE_WORDS;		//16
-parameter BLOCK_SIZE_BIT	= 8 * BLOCK_SIZE_BYTE;		//128
+parameter BLOCK_SIZE_BYTE 	= 4 * BLOCK_SIZE_WORDS;			    		//16
+parameter BLOCK_SIZE_BIT	= 8 * BLOCK_SIZE_BYTE;			    		//128
 parameter WORD_SIZE_BIT		= 32;
-parameter NUMBER_OF_SETS	= 1000;				//CACHE_LINES / 2
+parameter NUMBER_OF_SETS	= 1000;							    		//CACHE_LINES / 2
 parameter VALID_BIT			= 1;
 parameter DIRTY_BIT			= 1;
 parameter USED_BIT			= 1;
-parameter TAG_BIT			= 20;				//tag bit without dirty, used, valid bits
+parameter TAG_BIT			= 20;							    		//tag bit without dirty, used, valid bits
 parameter LAST_TAG_BIT_INDEX= 19;	
-parameter DIRTY_BIT_INDEX	= TAG_BIT; 		//20
-parameter USED_BIT_INDEX	= TAG_BIT + 1;		//21
-parameter VALID_BIT_INDEX	= TAG_BIT + 2;		//22
-parameter INDEX_BIT			= 32 - TAG_BIT - BLOCK_OFFSET_BIT;	//32-tagbits(20) - block_offset(2) = 10 bits
+parameter DIRTY_BIT_INDEX	= TAG_BIT; 									//20
+parameter USED_BIT_INDEX	= TAG_BIT + 1;								//21
+parameter VALID_BIT_INDEX	= TAG_BIT + 2;								//22
+parameter INDEX_BIT			= 32 - TAG_BIT - BLOCK_OFFSET_BIT;			//32-tagbits(20) - block_offset(2) = 10 bits
 parameter TOTAL_TAG_SIZE_BIT	= VALID_BIT+USED_BIT+DIRTY_BIT+TAG_BIT; //23
 
 /*
@@ -54,12 +52,12 @@ localparam	UPDATE_CACHE	= 3'd6;
 // Internal Wires and Registers 
 */
 reg	[BLOCK_SIZE_WORDS-1:0]	word_counter;		//counts word transfer between cache and memory in read & write	
-reg				update_flag;		//update MEM state
-reg 				read_mem_flag;
-reg 				write_mem_flag;
-reg				write_miss_flag;
-reg				read_stall_flag;
-reg				write_stall_flag;
+reg							update_flag;		//update MEM state
+reg 						read_stall_flag;	//read stall flag that make sure the processor 
+												//will stall until the desire cache and data memory read 
+
+reg							write_stall_flag;	//write stall flag that allows the processor to sall until 
+												//the correct value is written to the cache and data mem
 
 
 
@@ -76,11 +74,11 @@ wire	[WORD_SIZE_BIT-1:0]		read_mem_word2;
 wire	[WORD_SIZE_BIT-1:0]		read_mem_word3;
 reg	[BLOCK_SIZE_BIT-1:0]		write_mem_block;
 
-reg	read_not_write;		// when reading = 1, writing = 0
-reg	write_enable_DB0;	// Active high for DB0
-reg	write_enable_DB1;	// Active high for DB1
-reg	write_enable_Tag0;	// Active high for Tag0
-reg	write_enable_Tag1;	// Active high for Tag1
+reg	read_not_write;								// when reading = 1, writing = 0
+reg	write_enable_DB0;							// Active high for DB0
+reg	write_enable_DB1;							// Active high for DB1
+reg	write_enable_Tag0;							// Active high for Tag0
+reg	write_enable_Tag1;							// Active high for Tag1
 
 /*
 // Internal Wires and Registers from data and address
@@ -104,30 +102,27 @@ wire hit;
 wire valid;
 wire dirty;
 
-wire [(TOTAL_TAG_SIZE_BIT-1):0]	tag_read_0;	//23bits
-wire [(TOTAL_TAG_SIZE_BIT-1):0]	tag_read_1;
+wire [(TOTAL_TAG_SIZE_BIT-1):0]		tag_read_0;	//23bits
+wire [(TOTAL_TAG_SIZE_BIT-1):0]		tag_read_1;
 
-reg  [(TOTAL_TAG_SIZE_BIT-1):0]	tag_write_0;
-reg  [(TOTAL_TAG_SIZE_BIT-1):0]	tag_write_1;
-reg  [(TOTAL_TAG_SIZE_BIT-1):0]	tag_str_0;
-reg  [(TOTAL_TAG_SIZE_BIT-1):0]	tag_str_1;
+reg  [(TOTAL_TAG_SIZE_BIT-1):0]		tag_write_0;
+reg  [(TOTAL_TAG_SIZE_BIT-1):0]		tag_write_1;
+reg  [(TOTAL_TAG_SIZE_BIT-1):0]		tag_str_0;
+reg  [(TOTAL_TAG_SIZE_BIT-1):0]		tag_str_1;
 
-wire [(32*BLOCK_SIZE_WORDS)-1:0]			db_read_0;
-wire [(32*BLOCK_SIZE_WORDS)-1:0]			db_read_1;
-wire [(32*BLOCK_SIZE_WORDS)-1:0]			db_tb_out_0;
-wire [(32*BLOCK_SIZE_WORDS)-1:0]			db_tb_out_1;
-wire [(32*BLOCK_SIZE_WORDS)-1:0]			db_mux_in;
+wire [(32*BLOCK_SIZE_WORDS)-1:0]	db_read_0;
+wire [(32*BLOCK_SIZE_WORDS)-1:0]	db_read_1;
+wire [(32*BLOCK_SIZE_WORDS)-1:0]	db_tb_out_0;
+wire [(32*BLOCK_SIZE_WORDS)-1:0]	db_tb_out_1;
+wire [(32*BLOCK_SIZE_WORDS)-1:0]	db_mux_in
+reg  [(32*BLOCK_SIZE_WORDS)-1:0]	db_read;
+reg  [(32*BLOCK_SIZE_WORDS)-1:0]	db_write;
+reg  [(32*BLOCK_SIZE_WORDS)-1:0]	db_str_0;
+reg  [(32*BLOCK_SIZE_WORDS)-1:0]	db_str_1
+reg  [(32*BLOCK_SIZE_WORDS)-1:0]	db_mux_out;
 
-
-reg  [(32*BLOCK_SIZE_WORDS)-1:0]			db_read;
-reg  [(32*BLOCK_SIZE_WORDS)-1:0]			db_write;
-reg  [(32*BLOCK_SIZE_WORDS)-1:0]			db_str_0;
-reg  [(32*BLOCK_SIZE_WORDS)-1:0]			db_str_1;
-
-
-reg  [(32*BLOCK_SIZE_WORDS)-1:0]			db_mux_out;
-wire [WORD_SIZE_BIT-1:0]				word_mux_out;
-reg  [32-1:0]							addr_latch;
+wire [WORD_SIZE_BIT-1:0]			word_mux_out;
+reg  [32-1:0]						addr_latch;
 
 /*
 // States
@@ -139,7 +134,7 @@ reg  [2:0] state, next_state;
 */
 
 //assigning input address
-assign tag 		= (state == IDLE) ? addr_up[31:12] : addr_latch[31:12];
+assign tag 			= (state == IDLE) ? addr_up[31:12] : addr_latch[31:12];
 assign index		= (state == IDLE) ? addr_up[11:2] : addr_latch[11:2];
 assign block_offset	= (state == IDLE) ? addr_up[1:0] : addr_latch[1:0];
 
@@ -176,6 +171,7 @@ tri_buf #(BLOCK_SIZE_BIT) tri_buffer_way_1(	.a(db_read_1),
 
 
 assign db_mux_in	= (hit_way_0) ? db_tb_out_0 : db_tb_out_1;
+
 //block_offset_mux
 mux4 #(WORD_SIZE_BIT) block_offset_mux(	.s(block_offset), 
 					.d0(db_mux_in[WORD_SIZE_BIT-1:0]), 
@@ -205,15 +201,10 @@ always @(posedge clk, negedge reset) begin
 		read_mem		<= 1'd0;
 		write_mem		<= 1'd0;
 		stall_up		<= 1'd0;
-		//read_mem_start		<= 1'd0;
-		//write_mem_start		<= 1'd0;
 
 		//reset internal control signals
 		word_counter		<= {BLOCK_SIZE_WORDS{1'd0}};
-		update_flag		<= 1'd0;
-		read_mem_flag		<= 1'd0;
-		write_mem_flag		<= 1'd0;
-		write_miss_flag		<= 1'd0;
+		update_flag			<= 1'd0;
 		read_stall_flag		<= 1'd0;
 		write_stall_flag	<= 1'd0;
 		read_data_word 		<= {WORD_SIZE_BIT{1'd0}};
@@ -234,7 +225,7 @@ always @(posedge clk, negedge reset) begin
 		db_str_0		<= {(32*BLOCK_SIZE_WORDS){1'd0}};
 		db_str_1		<= {(32*BLOCK_SIZE_WORDS){1'd0}};
 		tag_write_0		<= {TOTAL_TAG_SIZE_BIT{1'd0}};
-		tag_write_1 		<= {TOTAL_TAG_SIZE_BIT{1'd0}};
+		tag_write_1 	<= {TOTAL_TAG_SIZE_BIT{1'd0}};
 		tag_str_0		<= {TOTAL_TAG_SIZE_BIT{1'd0}};
 		tag_str_1		<= {TOTAL_TAG_SIZE_BIT{1'd0}};
 
@@ -251,7 +242,6 @@ end
 always@(state, read_up, write_up, hit, ready_mem, valid, dirty, hit_way_0, 
 		used_way_0, used_way_1, block_offset, update_flag, read_not_write, posedge clk)
 begin
-	//need to set come vars to 0, will come to this after making the first state
 
 	case(state)
 
@@ -263,15 +253,10 @@ begin
 						stall_up 			<= 1'd1;
 						read_mem 			<= 1'd0;
 						write_mem 			<= 1'd0;
-						//read_mem_start			<= 1'd0;
-						//write_mem_start			<= 1'd0;
 					
 						//set internal control signals
 						word_counter		<= {BLOCK_SIZE_WORDS{1'd0}};
 						update_flag 		<= 1'd0;
-						read_mem_flag		<= 1'd0;
-						write_mem_flag		<= 1'd0;
-						write_miss_flag		<= 1'd0;
 						write_mem_word		<= {WORD_SIZE_BIT{1'd0}};
 						write_mem_block 	<= {BLOCK_SIZE_BIT{1'd0}};
 						write_enable_DB0 	<= 1'd0;
@@ -279,7 +264,7 @@ begin
 						write_enable_Tag0	<= 1'd0;
 						write_enable_Tag1 	<= 1'd0;
 						read_mem_block		<= {BLOCK_SIZE_BIT{1'd0}};
-						tag_write_0		<= {TOTAL_TAG_SIZE_BIT{1'd0}};
+						tag_write_0			<= {TOTAL_TAG_SIZE_BIT{1'd0}};
 						tag_write_1 		<= {TOTAL_TAG_SIZE_BIT{1'd0}};
 	
 						//set internal data and address buses signals 
@@ -364,11 +349,9 @@ begin
 						endcase
 					end
 		WRITE:			begin
-						write_mem_flag <=1'd1;
 						case(hit)
 							0'd0:	begin
 									//write_mem_start	<= 1'd1;
-									write_miss_flag <= 1'd1;
 									tag_str_0	<= tag_read_0;
 									tag_str_1	<= tag_read_1;
 									db_str_0	<= db_read_0;
@@ -430,8 +413,6 @@ begin
 						endcase
 						end
 		READ_MEM:		begin
-						//read_mem_start 	 <= 1'd0;
-						//read_mem_flag 	 <= 1'd1;
 						addr_mem 	<= {addr_latch[32-1:2],2'd0};
 							if(ready_mem)
 							begin
@@ -509,14 +490,12 @@ begin
 						begin
 							read_mem_block 	<= {data_mem, read_mem_block[WORD_SIZE_BIT*4-1:WORD_SIZE_BIT]};
 							word_counter <= {1'd1, word_counter[3:1]};
-							$display("test");
 						end
 						else 
 						begin
 							db_write	<= read_mem_block;
 							next_state	<= IDLE;
-							write_miss_flag <= 1'd0;
-							if (used_way_0) begin
+								if (used_way_0) begin
 								tag_write_0 	<= {tag_str_0[VALID_BIT_INDEX], 1'd0, tag_str_0[DIRTY_BIT_INDEX:0]};
 								tag_write_1 	<= {1'd1, 1'd0, 1'd0, addr_latch[32-1:12]};
 								write_enable_DB0	<= 1;
