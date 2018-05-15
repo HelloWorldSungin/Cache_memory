@@ -319,7 +319,6 @@ begin
 									@(negedge clk);
 									stall_up		<= 1'd0;
 									end
-									else stall_up 		<= 1'd1;
 									read_stall_flag		<= 1'd0;
 										if (hit_way_0) begin
 											if (used_way_0)	
@@ -369,8 +368,10 @@ begin
 									next_state 	<= IDLE;
 									write_enable_Tag0 <= 1'd1;
 									write_enable_Tag1 <= 1'd1;
+									if(write_stall_flag) begin
 									@(negedge clk);
 									stall_up 		  <= 1'd0;
+									end
 									write_stall_flag 	  <= 1'd0;
 										if(hit_way_0) begin
 											write_enable_DB0	<= 1'd1;
