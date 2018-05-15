@@ -283,36 +283,33 @@ begin
 						else begin
 							next_state		<= state;
 						end
-						if(read_stall_flag) next_state 	<= READ;
-						if(write_stall_flag) next_state <= WRITE;
+						if(read_stall_flag) next_state 	<= READ;		//When it's not a hit, after you updating and/or fetching data from data memory
+						if(write_stall_flag) next_state <= WRITE;		//you need to do READ or WRITE operation with the updated cache.
 					end
-		READ:			begin
-						write_enable_DB0 <= 0;
-						write_enable_DB0 <= 0;
+		READ:			begin	
+						write_enable_DB0 <= 0;		//it's reading operation, do we not want to modify the data blocks in the cache
+						write_enable_DB1 <= 0;
 						case(hit) 
 							1'd0: 	begin
-									//updating values up the memory
-									read_stall_flag <= 1;
+									//storing values in the cache of that index
+									//might need to update data memory with this data
+									read_stall_flag <= 1;	
 									tag_str_0	<= tag_read_0;	
 									tag_str_1	<= tag_read_1;
 									db_str_0	<= db_read_0;
 									db_str_1	<= db_read_1;
 									stall_up	<= 1'd1;
 									read_mem 	<= 1'd1;
-									//if(ready_mem)
 										if(valid & dirty) begin
 											next_state 	<= UPDATE_MEM;
-											//read_mem 	<= 1'd0; 	//
 										end
 										else begin 
 											next_state 	<= READ_MEM;
 											
 										end
-									//else 
-										//next_state <= state;
-	
 							   	end
-							1'd1:	begin
+							1'd1:	begin	
+									//After reading the value, updating the used bit of that tag
 									read_data_word 		<= word_mux_out;				
 									next_state 		<= IDLE;
 									write_enable_Tag0	<= 1'd1;
@@ -322,7 +319,7 @@ begin
 									@(negedge clk);
 									stall_up		<= 1'd0;
 									end
-									else stall_up 		<= 1'd0;
+									else stall_up 		<= 1'd1;
 									read_stall_flag		<= 1'd0;
 										if (hit_way_0) begin
 											if (used_way_0)	
@@ -347,27 +344,28 @@ begin
 								end
 						endcase
 					end
-		WRITE:			begin
+		WRITE:			begin	
 						case(hit)
 							0'd0:	begin
-									//write_mem_start	<= 1'd1;
+									//storing values in the cache of that index
+									//might need to update data memory with this data
 									write_stall_flag <= 1;
 									tag_str_0	<= tag_read_0;
 									tag_str_1	<= tag_read_1;
 									db_str_0	<= db_read_0;
 									db_str_1	<= db_read_1;
 									stall_up	<= 1'd1;
-									//write_mem 	<= 1'd1;	//might need another signal
 									read_mem 	<= 1'd1;
-									//if(ready_mem)
+					
 										if(valid & dirty)
 											next_state	<= UPDATE_MEM;
 										else
 											next_state	<= READ_MEM;
-									//else
-										//next_state	<= state;
-									end
+					
+								end
 							1'd1:	begin
+									//After writing to the correct block_offest of the data block
+									//update its used bit and dirty bit
 									next_state 	<= IDLE;
 									write_enable_Tag0 <= 1'd1;
 									write_enable_Tag1 <= 1'd1;
@@ -416,37 +414,43 @@ begin
 						endcase
 						end
 		READ_MEM:		begin
+						//output the address of the data memory so it can provide us with the data
 						addr_mem 	<= {addr_latch[32-1:2],2'd0};
+							//if the stall in completed to access the data 
+							//memory turn on the read_mem signal to read the data.
 							if(ready_mem)
 							begin
 								read_mem 	<= 1'd1;
 								next_state	<= WAIT_FOR_MEM;
 							end
 							else
-							begin							
+							begin	//if the previous states were UPDATE_MEM and WAIT_FOR_MEM
+								//we need read_mem to be high to triger the read memory stall 
+								//and eventually read data from data memory				
 								if(update_flag)	
 								read_mem 	= 1'd1;
 								else
 								read_mem	= 1'd0;
 								next_state	<= state;
 							end
-						update_flag	<= 1'd0; 
+						update_flag	<= 1'd0; //turning off the update flag
 					end
 
 		WAIT_FOR_MEM:	begin
+					// this state initiate the data transfer between cache and data memory
 							if(ready_mem)
 							begin
-								read_mem 	<= 1'd0; //
-								write_mem 	<= 1'd0; //
-								if(update_flag) begin
+								read_mem 	<= 1'd0; 
+								write_mem 	<= 1'd0; 
+								if(update_flag) begin	//update_flag tells this state if need to READ_MEM
 									next_state <= READ_MEM;
-									//read_mem <= 1'd1;
+
 								end
 								else
 									next_state <= UPDATE_CACHE;
 							end
 							else begin
-							 
+							 	//this initiate write data to the data memory
 								if(!read_not_write)
 								begin
 									write_mem_word 	<= write_mem_block[WORD_SIZE_BIT-1:0];
@@ -456,9 +460,7 @@ begin
 							end
 				end
 
-		UPDATE_MEM:		begin
-							//read_mem_start 	<= 1'd0;
-							//write_mem_start	<= 1'd0;	
+		UPDATE_MEM:		begin		//This state update current data in the cache to the data memory on write back policy
 							update_flag	<= 1'd1;
 							read_mem	<= 1'd0;
 							if(used_way_0)
@@ -476,18 +478,18 @@ begin
 							 begin
 								write_mem 	<= 1'd1;
 								next_state	<= WAIT_FOR_MEM;
-								read_not_write  <= 0; //
+								read_not_write  <= 0; 
 							end
 							else
 							begin
-								//@(negedge clk);								
+							
 								write_mem 	<= 1'd0;
 								next_state	<= state;
 															
 							end 
 						end
 
-		UPDATE_CACHE:	begin
+		UPDATE_CACHE:	begin		//This state update the cache with new data from data memory
 						update_flag <= 1'd0;
 						if(word_counter!=4'b1111)
 						begin
