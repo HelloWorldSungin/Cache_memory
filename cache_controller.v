@@ -314,12 +314,8 @@ begin
 									next_state 		<= IDLE;
 									write_enable_Tag0	<= 1'd1;
 									write_enable_Tag1	<= 1'd1;
-									if(read_stall_flag)
-									begin
 									@(negedge clk);
 									stall_up		<= 1'd0;
-									end
-									else stall_up 		<= 1'd0;
 									read_stall_flag		<= 1'd0;
 										if (hit_way_0) begin
 											if (used_way_0)	
