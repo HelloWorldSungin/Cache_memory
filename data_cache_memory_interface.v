@@ -1,4 +1,4 @@
-module data_cache_memory_interface(
+module data_cache_memory_interface (
 	clk,
 	reset,
 	RE,		//ready enable into the cache		
@@ -6,7 +6,13 @@ module data_cache_memory_interface(
 	WD,		//write data into the cache
 	addr,		//address into the cache
 	RD,		//read data from the cache
-	stall		//stall signal from the cache
+	stall,		//stall signal from the cache
+	
+	cache_hit,
+	cache_miss,
+	valid_dirty,
+	idle_plus,
+	stall_latch
 );
 
 //--Parameters------------------------
@@ -22,6 +28,12 @@ input [ADDR_WIDTH-1:0] addr;
 //--Output Ports----------------------
 output [DATA_WIDTH-1:0] RD;
 output stall;
+
+output cache_hit;
+output cache_miss;
+output valid_dirty;
+output [1:0] idle_plus;
+output stall_latch;
  
 //Cache wires
 
@@ -39,16 +51,21 @@ reg [DATA_WIDTH-1:0] d_up, w_up, wmem;
 wire [DATA_WIDTH-1:0] data_up, data_mem, dmem;
 
 
-
-cache_controller cache_memory(
+cache_controller cache_memory (
 						.clk(clk),			//Same clk from the processor
 						.reset(!reset),			//Active low sychronous reset
 						.ready_mem(ready_mem),		//Active high signal from the main memory
 					
 						.data_up(data_up),		//data input from the processor
-						.data_mem(data_mem),		//data input from the main memeory	
+						.data_mem(data_mem),	//data input from the main memeory	
 						.addr_up(addr),			//input address from the processor
-					 	.addr_mem(addr_mem),		//output address to the memory
+					 	.addr_mem(addr_mem),	//output address to the memory
+					 	
+					 	.hit_flag(cache_hit),
+					 	.miss_flag(cache_miss),
+					 	.valid_dirty(valid_dirty),
+					 	.idle_plus(idle_plus),
+					 	.stall_latch(stall_latch),
 					
 						.read_up(RE),			//Active high read from the processor
 						.write_up(WE),			//Active high write from the processor	
@@ -57,7 +74,7 @@ cache_controller cache_memory(
 						.stall_up(stall)		//Active high stall to the peocessorc
 );
 
-data_memory data_memory(
+data_memory_for_cache data_memory_delay(
 						.clk(clk),
 						.reset(reset),
 						.wr_en(wr_mem),

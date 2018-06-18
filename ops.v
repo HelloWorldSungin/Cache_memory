@@ -1,33 +1,52 @@
-/*
- *  file: ops.v
- *  will be integrated with the ops file in the pipeline
- */
 
-module equals #(parameter TAG = 20)(
-	input [TAG - 1:0] tagA, tagB,
-	output 				eq
+module adder (
+	input [31:0] a, b,
+	output [31:0] y
 );
-
-assign eq = (tagA == tagB) ? 1 : 0;
-
+	assign y = a + b;
 endmodule
 
-module tri_buf #(parameter DATA_BLOCK = 128)(
-	input 	[DATA_BLOCK - 1 : 0] a,
-	input		enable,
-	output 	[DATA_BLOCK - 1 : 0] b
+module signext_16_32 (
+	input [15:0] src,
+	output [31:0] out
 );
-
-assign b = enable ? a : {DATA_BLOCK{1'dz}};
-
+	assign out = { {16{src[15]}}, src };
 endmodule
 
-module mux4 #(parameter WORD_SIZE_BIT = 32) (
-	input  [1:0] s,
-	input  [WORD_SIZE_BIT-1:0] d0, d1, d2, d3,
-	output [WORD_SIZE_BIT-1:0] y
+
+module zeroext_16_32 (
+	input [15:0] src,
+	output [31:0] out
+);  // This is the zero-extended function module HIGHLIGHTED!!!
+	assign out = {16'b0000_0000_0000_0000, src};
+endmodule
+
+module sll_2 (
+	input [31:0] a,
+	output [31:0] y
 );
+	assign y ={a[29:0], 2'b00};
+endmodule
 
-assign y = (s == 2'd0) ? d0 : ((s == 2'd1) ? d1 : ((s == 2'd2) ? d2 : d3));
 
+module sll_16 (
+	input [15:0] src,
+	output [31:0] out
+);
+	assign out= { src, 16'b0000_0000_0000_0000 };
+endmodule
+
+
+module equals (
+	input [31:0] srcA, srcB,
+	output eq
+);
+	assign eq = (srcA == srcB) ? 1 : 0;
+endmodule
+
+module equals_cache #(parameter TAG = 20)(
+	input [31:0] srcA, srcB,
+	output eq
+);
+	assign eq = (srcA == srcB) ? 1 : 0;
 endmodule
